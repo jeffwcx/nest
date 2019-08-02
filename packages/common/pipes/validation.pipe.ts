@@ -10,6 +10,7 @@ import { ValidatorOptions } from '../interfaces/external/validator-options.inter
 import { PipeTransform } from '../interfaces/features/pipe-transform.interface';
 import { loadPackage } from '../utils/load-package.util';
 import { isNil } from '../utils/shared.utils';
+import { REWRITE_OPTIONS } from './validation.constants';
 
 export interface ValidationPipeOptions extends ValidatorOptions {
   transform?: boolean;
@@ -73,13 +74,19 @@ export class ValidationPipe implements PipeTransform<any> {
       value,
       this.transformOptions,
     );
-    const errors = await classValidator.validate(entity, this.validatorOptions);
+
+    const dymanicOptions = Reflect.getMetadata(REWRITE_OPTIONS, metadata.metatype);
+
+    const validatorOptions = dymanicOptions
+      ? Object.assign({}, this.validatorOptions, dymanicOptions)
+      : this.validatorOptions;
+    const errors = await classValidator.validate(entity, validatorOptions);
     if (errors.length > 0) {
       throw this.exceptionFactory(errors);
     }
     return this.isTransformEnabled
       ? entity
-      : Object.keys(this.validatorOptions).length > 0
+      : Object.keys(validatorOptions).length > 0
       ? classTransformer.classToPlain(entity, this.transformOptions)
       : value;
   }
